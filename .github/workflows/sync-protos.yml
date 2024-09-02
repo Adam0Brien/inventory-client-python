@@ -1,0 +1,51 @@
+name: Sync Protos
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *' # Runs every 6 hours.
+
+jobs:
+  sync-protos:
+    name: Sync Protos and Create PR
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      # Checkout the current repository
+      - uses: actions/checkout@v4
+      - name: Clone inventory-api repo
+        run: |
+          git clone https://github.com/project-kessel/inventory-api.git
+
+      - name: Move proto files to temporary directory
+        run: |
+          mkdir temp_dir
+          cp -r inventory-api/api/kessel/inventory/v1beta1 temp_dir/
+
+
+      - name: Install grpcio-tools
+        run: pip install grpcio-tools
+
+      - name: Generate Python client code
+        run: |
+          python -m grpc_tools.protoc \
+            -Itemp_dir/v1beta1/ \
+            --python_out=src/kessel/inventory/v1beta1 \
+            --pyi_out=src/kessel/inventory/v1beta1 \
+            --grpc_python_out=src/kessel/inventory/v1beta1 \
+            temp_dir/v1beta1/*.proto
+
+      - name: Clean up
+        run: rm -rf temp_dir inventory-api
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'Sync updated proto files and generated Python client code'
+          title: Sync Protos and Generate Python Client
+          branch: proto-sync/update
+          body: |
+            This PR updates the protobuf files and regenerates the Python client code.
