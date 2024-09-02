@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Clone inventory-api repo
         run: git clone --depth=1 https://github.com/project-kessel/inventory-api.git
+      - name: List directories and files
+        run: ls -R inventory-api
       - name: Copy proto files
         run: |
           cp -r inventory-api/api/kessel/inventory/v1beta1/*.proto src/kessel/inventory/v1beta1/
