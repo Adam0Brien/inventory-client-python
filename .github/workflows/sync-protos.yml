@@ -31,14 +31,14 @@ jobs:
       - name: List proto files
         run: ls -R temp_dir/v1beta1/
 
-      - name: Generate Python client code
+      - name: Run grpc_tools.protoc for relationships
         run: |
-          python -m grpc_tools.protoc \
-            -Itemp_dir/v1beta1/ \
-            --python_out=src/kessel/inventory/v1beta1 \
-            --pyi_out=src/kessel/inventory/v1beta1 \
-            --grpc_python_out=src/kessel/inventory/v1beta1 \
-            temp_dir/v1beta1/*.proto
+          python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. temp_dir/v1beta1/relationships/*.proto
+      
+      - name: Run grpc_tools.protoc for resources
+        run: |
+          python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. temp_dir/v1beta1/resources/*.proto
+      
 
       - name: Clean up
         run: rm -rf temp_dir inventory-api
