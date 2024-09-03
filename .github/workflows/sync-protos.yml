@@ -28,6 +28,10 @@ jobs:
       - name: Install grpcio-tools
         run: pip install grpcio-tools
 
+      - name: List proto files
+        run: ls -R temp_dir/v1beta1/
+
+
       - name: Generate Python client code
         run: |
           python -m grpc_tools.protoc \
