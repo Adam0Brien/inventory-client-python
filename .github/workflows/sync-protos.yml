@@ -1,54 +1,50 @@
-name: Sync Protos
+name: Generate Python Client and Create PR
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 */6 * * *' # Runs every 6 hours.
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
-  sync-protos:
-    name: Sync Protos and Create PR
+  generate-proto:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: write
+
     steps:
-      # Checkout the current repository
-      - uses: actions/checkout@v4
-      - name: Clone inventory-api repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false # Disable token persistence for security
+          fetch-depth: 0 # Fetch all history for proper versioning
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install git
+        run: sudo apt-get install git
+
+      - name: Run generation script
+        run: ./generate_python_grpc_client.sh # Assuming your script is saved as generate_grpc.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This will allow access to create PR
+
+      - name: Check for changes
         run: |
-          git clone https://github.com/project-kessel/inventory-api.git
-
-      - name: Move proto files to temporary directory
-        run: |
-          mkdir temp_dir
-          cp -r inventory-api/api/kessel/inventory/v1beta1 temp_dir/
-
-
-      - name: Install grpcio-tools
-        run: pip install grpcio-tools
-
-      - name: List proto files
-        run: ls -R temp_dir/v1beta1/
-
-      - name: Run grpc_tools.protoc for relationships
-        run: |
-          python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. temp_dir/v1beta1/relationships/*.proto
-      
-      - name: Run grpc_tools.protoc for resources
-        run: |
-          python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. temp_dir/v1beta1/resources/*.proto
-      
-
-      - name: Clean up
-        run: rm -rf temp_dir inventory-api
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b generated-client
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Generated Python client from proto files"
+            git push origin generated-client
+          else
+            echo "No changes detected."
+            exit 0
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: 'Sync updated proto files and generated Python client code'
-          title: Sync Protos and Generate Python Client
-          branch: proto-sync/update
-          body: |
-            This PR updates the protobuf files and regenerates the Python client code.
+          branch: generated-client
+          title: "Generated Python client from proto files"
+          body: "This PR contains the generated Python client from the proto files."
+          labels: "auto-generated"
